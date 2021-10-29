@@ -1,6 +1,10 @@
 const Jimp = require('jimp');
 const { GifUtil, GifFrame, GifCodec } = require('gifwrap');
 const gifFrames = require('gif-frames');
+const log4js = require('log4js');
+
+const logger = log4js.getLogger();
+logger.level = 'debug';
 
 const mimimizeText = (text) => {
     let mimimizedText = text || '';
@@ -20,6 +24,9 @@ const mimimizeGif = async ({
     textMessage, writeAsFile, gif, debugId,
 }) => {
     const printedDebugId = debugId || 'no-id';
+    const startTime = performance.now();
+    logger.debug(`${printedDebugId}: START - General (mimimizeGif)`);
+
     let mimimizedMessage = mimimizeText(textMessage);
     const font = await loadFont();
 
@@ -27,9 +34,9 @@ const mimimizeGif = async ({
     const filePath = `${__dirname}/assets/small_mimimi${gitNumber}.gif`;
 
     // pillo la info de los frames
-    console.time(`${printedDebugId}: gifFrames`);
+    logger.debug(`${printedDebugId}: START - gifFrames`);
     const originalFrameData = await gifFrames({ url: filePath, frames: 'all', cumulative: true });
-    console.timeEnd(`${printedDebugId}: gifFrames`);
+    logger.debug(`${printedDebugId}: END - gifFrames`);
 
     let framesNumber = originalFrameData.length - 1;
     let frameData = originalFrameData;
@@ -42,7 +49,7 @@ const mimimizeGif = async ({
     let NoOflettersWritten = 0;
     const originalMessage = mimimizedMessage;
 
-    console.time(`${printedDebugId}: generateImages`);
+    logger.debug(`${printedDebugId}: START - generateImages`);
     const frames = [];
     for (let index = 0; index < frameData.length; index++) {
         const frame = frameData[index];
@@ -76,9 +83,9 @@ const mimimizeGif = async ({
         GifUtil.quantizeSorokin(GifCopied);
         frames.push(GifCopied);
     }
-    console.timeEnd(`${printedDebugId}: generateImages`);
+    logger.debug(`${printedDebugId}: END - generateImages`);
 
-    console.time(`${printedDebugId}: generateGif`);
+    logger.debug(`${printedDebugId}: START - generateGif`);
 
     let result;
     if (writeAsFile) {
@@ -91,7 +98,9 @@ const mimimizeGif = async ({
         const encodedGIF = await codec.encodeGif(frames, { loops: 0 });
         result = encodedGIF.buffer;
     }
-    console.timeEnd(`${printedDebugId}: generateGif`);
+    logger.debug(`${printedDebugId}: END - generateGif`);
+    const endTime = performance.now();
+    logger.debug(`${printedDebugId}: END - general - Tiempo total: ${(endTime - startTime).toFixed(2)} ms`);
     return Promise.resolve(result);
 };
 

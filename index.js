@@ -1,6 +1,10 @@
 const fs = require('fs');
+const log4js = require('log4js');
 const { auth } = require('./config');
 const mimimizeGif = require('./mimimize-gif');
+
+const logger = log4js.getLogger();
+logger.level = 'debug';
 
 const client = auth();
 
@@ -14,7 +18,7 @@ const initMediaUpload = async (pathToFile) => {
             media_type: mediaType,
         }, (error, data) => {
             if (error) {
-                console.log(error);
+                logger.error(error);
                 reject(error);
             } else {
                 resolve(data.media_id_string);
@@ -33,7 +37,7 @@ const appendMedia = async (mediaId, pathToFile) => {
             segment_index: 0,
         }, (error) => {
             if (error) {
-                console.log(error);
+                logger.error(error);
                 reject(error);
             } else {
                 resolve(mediaId);
@@ -48,7 +52,7 @@ const finalizeMediaUpload = async (mediaId) => new Promise((resolve, reject) => 
         media_id: mediaId,
     }, (error) => {
         if (error) {
-            console.log(error);
+            logger.error(error);
             reject(error);
         } else {
             resolve(mediaId);
@@ -74,59 +78,62 @@ const postReplyWithMedia = async (mediaFilePath, textMessage, replyTweet) => {
 };
 
 client.stream('statuses/filter', { track: '@mimimmiBot' }, (stream) => {
-    console.log('Buscando tweets...');
+    logger.debug('Buscando tweets...');
 
     stream.on('error', (error) => {
-        console.error('[ERROR]', error);
+        logger.error('[ERROR]', error);
     });
 
     stream.on('data', async (tweet) => {
-        console.log('Tweet recibido de:', tweet.user.screen_name);
-        console.log('Tweet:', tweet.text);
+        logger.debug('Tweet recibido de:', tweet.user.screen_name);
+        logger.debug('Tweet:', tweet.text);
+        const startTime = performance.now();
+        logger.debug(`${tweet.id_str}: START General (Procesa tweet)`);
+
         if (tweet.user.screen_name === 'mimimmiBot') {
-            console.log('Es una respuesta, no entres en bucle!');
+            logger.debug('Es una respuesta, no entres en bucle!');
         } else if (tweet.retweeted_status) {
-            console.log('Es un retweet, no hagas nada!');
+            logger.debug('Es un retweet, no hagas nada!');
         } else {
-            console.time(`${tweet.id_str}: total`);
             try {
                 if (tweet.in_reply_to_status_id_str) {
                     const response = await client.get(`statuses/show/${tweet.in_reply_to_status_id_str}`, {});
 
-                    console.time(`${tweet.id_str}: mimimizeGif`);
+                    logger.debug(`${tweet.id_str}: START mimimizeGif`);
                     const gifPath = await mimimizeGif({
                         textMessage: response.text,
                         writeAsFile: true,
                         debugId: tweet.id_str,
                     });
-                    console.timeEnd(`${tweet.id_str}: mimimizeGif`);
+                    logger.debug(`${tweet.id_str}: END mimimizeGif`);
 
-                    console.time(`${tweet.id_str}: postReplyWithMedia`);
+                    logger.debug(`${tweet.id_str}: START postReplyWithMedia`);
                     await postReplyWithMedia(gifPath, `@${tweet.user.screen_name} @${response.user.screen_name}`, response);
-                    console.timeEnd(`${tweet.id_str}: postReplyWithMedia`);
+                    logger.debug(`${tweet.id_str}: END postReplyWithMedia`);
 
                     fs.unlinkSync(gifPath);
                 } else {
-                    console.time(`${tweet.id_str}: postReplyWithMediaNocitado`);
+                    logger.debug(`${tweet.id_str}: START postReplyWithMediaNocitado`);
                     const gifPathNoMessage = `./mimimize-gif/assets/no_texto${Math.ceil(Math.random() * 10)}.gif`;
                     postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No estás citando ningún mensaje`, tweet);
-                    console.timeEnd(`${tweet.id_str}: postReplyWithMediaNocitado`);
+                    logger.debug(`${tweet.id_str}: END postReplyWithMediaNocitado`);
                 }
             } catch (error) {
-                console.error('[ERROR]', error);
+                logger.error('[ERROR]', error);
                 if (Array.isArray(error) && error[0].code === 179) {
                     try {
-                        console.time(`${tweet.id_str}: postReplyWithMediaNocitado`);
+                        logger.debug(`${tweet.id_str}: START postReplyWithMediaNocitado`);
                         const gifPathNoMessage = `./mimimize-gif/assets/no_acceso${Math.ceil(Math.random() * 10)}.gif`;
                         postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No puedo acceder a ese mensaje`, tweet);
-                        console.timeEnd(`${tweet.id_str}: postReplyWithMediaNocitado`);
+                        logger.debug(`${tweet.id_str}: END postReplyWithMediaNocitado`);
                     } catch (error2) {
-                        console.error('[ERROR]', error2);
+                        logger.error('[ERROR]', error2);
                     }
                 }
             }
-            console.timeEnd(`${tweet.id_str}: total`);
-            console.log('----');
         }
+        const endTime = performance.now();
+        logger.debug(`${tweet.id_str}: END - General (Procesa tweet) - Tiempo total: ${(endTime - startTime).toFixed(2)} ms`);
+        logger.debug('-----------------');
     });
 });
