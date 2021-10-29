@@ -77,7 +77,7 @@ const postReplyWithMedia = async (mediaFilePath, textMessage, replyTweet) => {
     }
 };
 
-client.stream('statuses/filter', { track: '@mimimmiBot' }, (stream) => {
+client.stream('statuses/filter', { track: '@mimimiGifBot' }, (stream) => {
     logger.debug('Buscando tweets...');
 
     stream.on('error', (error) => {
@@ -90,7 +90,7 @@ client.stream('statuses/filter', { track: '@mimimmiBot' }, (stream) => {
         const startTime = performance.now();
         logger.debug(`${tweet.id_str}: START General (Procesa tweet)`);
 
-        if (tweet.user.screen_name === 'mimimmiBot') {
+        if (tweet.user.screen_name === 'mimimiGifBot') {
             logger.debug('Es una respuesta, no entres en bucle!');
         } else if (tweet.retweeted_status) {
             logger.debug('Es un retweet, no hagas nada!');

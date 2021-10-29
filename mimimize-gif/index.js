@@ -100,7 +100,7 @@ const mimimizeGif = async ({
     }
     logger.debug(`${printedDebugId}: END - generateGif`);
     const endTime = performance.now();
-    logger.debug(`${printedDebugId}: END - general - Tiempo total: ${(endTime - startTime).toFixed(2)} ms`);
+    logger.debug(`${printedDebugId}: END - General (mimimizeGif) - Tiempo total: ${(endTime - startTime).toFixed(2)} ms`);
     return Promise.resolve(result);
 };
 
