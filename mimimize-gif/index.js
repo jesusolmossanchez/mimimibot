@@ -16,7 +16,10 @@ const loadFont = async () => {
     return loadedFont;
 };
 
-const mimimizeGif = async ({ textMessage, writeAsFile, gif }) => {
+const mimimizeGif = async ({
+    textMessage, writeAsFile, gif, debugId,
+}) => {
+    const printedDebugId = debugId || 'no-id';
     let mimimizedMessage = mimimizeText(textMessage);
     const font = await loadFont();
 
@@ -24,9 +27,9 @@ const mimimizeGif = async ({ textMessage, writeAsFile, gif }) => {
     const filePath = `${__dirname}/assets/small_mimimi${gitNumber}.gif`;
 
     // pillo la info de los frames
-    console.time('gifFrames');
+    console.time(`${printedDebugId}: gifFrames`);
     const originalFrameData = await gifFrames({ url: filePath, frames: 'all', cumulative: true });
-    console.timeEnd('gifFrames');
+    console.timeEnd(`${printedDebugId}: gifFrames`);
 
     let framesNumber = originalFrameData.length - 1;
     let frameData = originalFrameData;
@@ -39,7 +42,7 @@ const mimimizeGif = async ({ textMessage, writeAsFile, gif }) => {
     let NoOflettersWritten = 0;
     const originalMessage = mimimizedMessage;
 
-    console.time('generateImages');
+    console.time(`${printedDebugId}: generateImages`);
     const frames = [];
     for (let index = 0; index < frameData.length; index++) {
         const frame = frameData[index];
@@ -73,9 +76,9 @@ const mimimizeGif = async ({ textMessage, writeAsFile, gif }) => {
         GifUtil.quantizeSorokin(GifCopied);
         frames.push(GifCopied);
     }
-    console.timeEnd('generateImages');
+    console.timeEnd(`${printedDebugId}: generateImages`);
 
-    console.time('generateGif');
+    console.time(`${printedDebugId}: generateGif`);
 
     let result;
     if (writeAsFile) {
@@ -88,7 +91,7 @@ const mimimizeGif = async ({ textMessage, writeAsFile, gif }) => {
         const encodedGIF = await codec.encodeGif(frames, { loops: 0 });
         result = encodedGIF.buffer;
     }
-    console.timeEnd('generateGif');
+    console.timeEnd(`${printedDebugId}: generateGif`);
     return Promise.resolve(result);
 };
 

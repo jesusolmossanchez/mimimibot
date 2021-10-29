@@ -77,7 +77,7 @@ client.stream('statuses/filter', { track: '@mimimmiBot' }, (stream) => {
     console.log('Buscando tweets...');
 
     stream.on('error', (error) => {
-        console.error(error);
+        console.error('[ERROR]', error);
     });
 
     stream.on('data', async (tweet) => {
@@ -88,43 +88,44 @@ client.stream('statuses/filter', { track: '@mimimmiBot' }, (stream) => {
         } else if (tweet.retweeted_status) {
             console.log('Es un retweet, no hagas nada!');
         } else {
-            console.time(`${tweet.user.screen_name}: total`);
+            console.time(`${tweet.id_str}: total`);
             try {
                 if (tweet.in_reply_to_status_id_str) {
                     const response = await client.get(`statuses/show/${tweet.in_reply_to_status_id_str}`, {});
 
-                    console.time(`${tweet.user.screen_name}: mimimizeGif`);
+                    console.time(`${tweet.id_str}: mimimizeGif`);
                     const gifPath = await mimimizeGif({
                         textMessage: response.text,
-                        write_as_file: true,
+                        writeAsFile: true,
+                        debugId: tweet.id_str,
                     });
-                    console.timeEnd(`${tweet.user.screen_name}: mimimizeGif`);
+                    console.timeEnd(`${tweet.id_str}: mimimizeGif`);
 
-                    console.time(`${tweet.user.screen_name}: postReplyWithMedia`);
-                    await postReplyWithMedia(client, gifPath, `@${tweet.user.screen_name} @${response.user.screen_name}`, response);
-                    console.timeEnd(`${tweet.user.screen_name}: postReplyWithMedia`);
+                    console.time(`${tweet.id_str}: postReplyWithMedia`);
+                    await postReplyWithMedia(gifPath, `@${tweet.user.screen_name} @${response.user.screen_name}`, response);
+                    console.timeEnd(`${tweet.id_str}: postReplyWithMedia`);
 
                     fs.unlinkSync(gifPath);
                 } else {
-                    console.time(`${tweet.user.screen_name}: postReplyWithMediaNocitado`);
+                    console.time(`${tweet.id_str}: postReplyWithMediaNocitado`);
                     const gifPathNoMessage = `./mimimize-gif/assets/no_texto${Math.ceil(Math.random() * 10)}.gif`;
-                    postReplyWithMedia(client, gifPathNoMessage, `@${tweet.user.screen_name} No estás citando ningún mensaje`, tweet);
-                    console.timeEnd(`${tweet.user.screen_name}: postReplyWithMediaNocitado`);
+                    postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No estás citando ningún mensaje`, tweet);
+                    console.timeEnd(`${tweet.id_str}: postReplyWithMediaNocitado`);
                 }
             } catch (error) {
-                console.error(error);
-                if (error[0].code === 179) {
+                console.error('[ERROR]', error);
+                if (Array.isArray(error) && error[0].code === 179) {
                     try {
-                        console.time(`${tweet.user.screen_name}: postReplyWithMediaNocitado`);
+                        console.time(`${tweet.id_str}: postReplyWithMediaNocitado`);
                         const gifPathNoMessage = `./mimimize-gif/assets/no_acceso${Math.ceil(Math.random() * 10)}.gif`;
-                        postReplyWithMedia(client, gifPathNoMessage, `@${tweet.user.screen_name} No puedo acceder a ese mensaje`, tweet);
-                        console.timeEnd(`${tweet.user.screen_name}: postReplyWithMediaNocitado`);
+                        postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No puedo acceder a ese mensaje`, tweet);
+                        console.timeEnd(`${tweet.id_str}: postReplyWithMediaNocitado`);
                     } catch (error2) {
-                        console.error(error2);
+                        console.error('[ERROR]', error2);
                     }
                 }
             }
-            console.timeEnd(`${tweet.user.screen_name}: total`);
+            console.timeEnd(`${tweet.id_str}: total`);
             console.log('----');
         }
     });
