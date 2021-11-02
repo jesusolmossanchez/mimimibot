@@ -83,9 +83,7 @@ client.stream('statuses/filter', { track: '@mimimiGifBot' }, (stream) => {
 
     stream.on('data', async (tweet) => {
         logger.debug('Tweet recibido de:', tweet.user.screen_name);
-        logger.debug('Tweet:', tweet.text);
         logger.startDebug(tweet.id_str, 'General (Procesa tweet)');
-
         if (tweet.user.screen_name === 'mimimiGifBot') {
             logger.debug(`${tweet.id_str}: Es una respuesta, no entres en bucle!`);
         } else if (tweet.retweeted_status) {
@@ -95,19 +93,35 @@ client.stream('statuses/filter', { track: '@mimimiGifBot' }, (stream) => {
                 if (tweet.in_reply_to_status_id_str) {
                     const response = await client.get(`statuses/show/${tweet.in_reply_to_status_id_str}`, {});
 
-                    logger.startDebug(tweet.id_str, 'mimimizeGif');
-                    const gifPath = await mimimizeGif({
-                        textMessage: response.text,
-                        writeAsFile: true,
-                        debugId: tweet.id_str,
-                    });
-                    logger.endDebug(tweet.id_str, 'mimimizeGif');
+                    if (response.user.screen_name === 'mimimiGifBot' && response.entities.media && response.entities.media.length) {
+                        logger.debug(`${tweet.id_str}: Es una respuesta a mi mismo, no hagas nada!`);
+                    } else {
+                        let finalText = response.text.replace(/(@\S+)/gi, '').trim(); // quito menciones
+                        finalText = finalText.replace(/(http:\/\/\S+)/gi, '').trim(); // quito enlaces http
+                        finalText = finalText.replace(/(https:\/\/\S+)/gi, '').trim(); // quito enlace https
 
-                    logger.startDebug(tweet.id_str, 'postReplyWithMedia');
-                    await postReplyWithMedia(gifPath, `@${tweet.user.screen_name} @${response.user.screen_name}`, response);
-                    logger.endDebug(tweet.id_str, 'postReplyWithMedia');
+                        if (finalText.length) {
+                            logger.debug('Tweet:', response.text);
+                            logger.startDebug(tweet.id_str, 'mimimizeGif');
+                            const gifPath = await mimimizeGif({
+                                textMessage: finalText,
+                                writeAsFile: true,
+                                debugId: tweet.id_str,
+                            });
+                            logger.endDebug(tweet.id_str, 'mimimizeGif');
 
-                    fs.unlinkSync(gifPath);
+                            logger.startDebug(tweet.id_str, 'postReplyWithMedia');
+                            await postReplyWithMedia(gifPath, `@${tweet.user.screen_name} @${response.user.screen_name}`, response);
+                            logger.endDebug(tweet.id_str, 'postReplyWithMedia');
+
+                            fs.unlinkSync(gifPath);
+                        } else {
+                            logger.startDebug(tweet.id_str, 'postReplyWithMediaNocitado');
+                            const gifPathNoMessage = `./mimimize-gif/assets/no_texto${Math.ceil(Math.random() * 10)}.gif`;
+                            postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No estás citando ningún mensaje con texto`, tweet);
+                            logger.endDebug(tweet.id_str, 'postReplyWithMediaNocitado');
+                        }
+                    }
                 } else {
                     logger.startDebug(tweet.id_str, 'postReplyWithMediaNocitado');
                     const gifPathNoMessage = `./mimimize-gif/assets/no_texto${Math.ceil(Math.random() * 10)}.gif`;
