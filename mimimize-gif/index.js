@@ -29,6 +29,7 @@ const mimimizeGif = async ({
 
     const gitNumber = gif || Math.ceil(Math.random() * 10);
     const filePath = `${__dirname}/assets/small_mimimi${gitNumber}.gif`;
+    finalLogger.debug(`gitNumber: ${gitNumber}`);
 
     // pillo la info de los frames
     finalLogger.startDebug(printedDebugId, 'gifFrames');

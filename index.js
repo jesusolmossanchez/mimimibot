@@ -96,12 +96,16 @@ client.stream('statuses/filter', { track: '@mimimiGifBot' }, (stream) => {
                     if (response.user.screen_name === 'mimimiGifBot' && response.entities.media && response.entities.media.length) {
                         logger.debug(`${tweet.id_str}: Es una respuesta a mi mismo, no hagas nada!`);
                     } else {
+                        logger.debug('Tweet:', response.text);
                         let finalText = response.text.replace(/(@\S+)/gi, '').trim(); // quito menciones
                         finalText = finalText.replace(/(http:\/\/\S+)/gi, '').trim(); // quito enlaces http
                         finalText = finalText.replace(/(https:\/\/\S+)/gi, '').trim(); // quito enlace https
-
+                        if (finalText.length > 80) {
+                            finalText = finalText.substring(0, 80);
+                            finalText += '...';
+                        }
                         if (finalText.length) {
-                            logger.debug('Tweet:', response.text);
+                            logger.debug('finalText:', finalText);
                             logger.startDebug(tweet.id_str, 'mimimizeGif');
                             const gifPath = await mimimizeGif({
                                 textMessage: finalText,
