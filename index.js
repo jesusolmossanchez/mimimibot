@@ -74,6 +74,35 @@ const postReplyWithMedia = async (mediaFilePath, textMessage, replyTweet) => {
     }
 };
 
+const isResponseToBot = (tweet) => {
+    // Si es una respuesta directa, no hacer nada
+    if (tweet.user.screen_name === 'mimimiGifBot'
+            && tweet.entities.media
+            && tweet.entities.media.length) {
+        return true;
+    }
+    // Si no tiene menciones, no es respuesta
+    if (!tweet.entities || !tweet.entities.user_mentions || !tweet.entities.user_mentions.length) {
+        return false;
+    }
+    // Si dentro de las menciones, una eso a mimimiGifBot, si es una respuesta al bot
+    if (tweet.entities.user_mentions.find((user) => user.screen_name === 'mimimiGifBot')) {
+        return true;
+    }
+    return false;
+};
+
+const setFinalText = (text) => {
+    let finalText = text.replace(/(@\S+)/gi, '').trim(); // quito menciones
+    finalText = finalText.replace(/(http:\/\/\S+)/gi, '').trim(); // quito enlaces http
+    finalText = finalText.replace(/(https:\/\/\S+)/gi, '').trim(); // quito enlace https
+    if (finalText.length > 80) {
+        finalText = finalText.substring(0, 80);
+        finalText += '...';
+    }
+    return finalText;
+};
+
 client.stream('statuses/filter', { track: '@mimimiGifBot' }, (stream) => {
     logger.debug('Buscando tweets...');
 
@@ -91,19 +120,13 @@ client.stream('statuses/filter', { track: '@mimimiGifBot' }, (stream) => {
         } else {
             try {
                 if (tweet.in_reply_to_status_id_str) {
-                    const response = await client.get(`statuses/show/${tweet.in_reply_to_status_id_str}`, {});
-
-                    if (response.user.screen_name === 'mimimiGifBot' && response.entities.media && response.entities.media.length) {
+                    const response = await client.get(`statuses/show/${tweet.in_reply_to_status_id_str}`, { tweet_mode: 'extended' });
+                    if (isResponseToBot(response)) {
                         logger.debug(`${tweet.id_str}: Es una respuesta a mi mismo, no hagas nada!`);
                     } else {
-                        logger.debug('Tweet:', response.text);
-                        let finalText = response.text.replace(/(@\S+)/gi, '').trim(); // quito menciones
-                        finalText = finalText.replace(/(http:\/\/\S+)/gi, '').trim(); // quito enlaces http
-                        finalText = finalText.replace(/(https:\/\/\S+)/gi, '').trim(); // quito enlace https
-                        if (finalText.length > 80) {
-                            finalText = finalText.substring(0, 80);
-                            finalText += '...';
-                        }
+                        logger.debug('Tweet:', response.full_text);
+                        const finalText = setFinalText(response.full_text);
+
                         if (finalText.length) {
                             logger.debug('finalText:', finalText);
                             logger.startDebug(tweet.id_str, 'mimimizeGif');
@@ -122,14 +145,14 @@ client.stream('statuses/filter', { track: '@mimimiGifBot' }, (stream) => {
                         } else {
                             logger.startDebug(tweet.id_str, 'postReplyWithMediaNocitado');
                             const gifPathNoMessage = `./mimimize-gif/assets/no_texto${Math.ceil(Math.random() * 10)}.gif`;
-                            postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No estás citando ningún mensaje con texto`, tweet);
+                            await postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No estás citando ningún mensaje con texto`, tweet);
                             logger.endDebug(tweet.id_str, 'postReplyWithMediaNocitado');
                         }
                     }
                 } else {
                     logger.startDebug(tweet.id_str, 'postReplyWithMediaNocitado');
                     const gifPathNoMessage = `./mimimize-gif/assets/no_texto${Math.ceil(Math.random() * 10)}.gif`;
-                    postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No estás citando ningún mensaje`, tweet);
+                    await postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No estás citando ningún mensaje`, tweet);
                     logger.endDebug(tweet.id_str, 'postReplyWithMediaNocitado');
                 }
             } catch (error) {
@@ -138,7 +161,7 @@ client.stream('statuses/filter', { track: '@mimimiGifBot' }, (stream) => {
                     try {
                         logger.startDebug(tweet.id_str, 'postReplyWithMediaNocitado');
                         const gifPathNoMessage = `./mimimize-gif/assets/no_acceso${Math.ceil(Math.random() * 10)}.gif`;
-                        postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No puedo acceder a ese mensaje`, tweet);
+                        await postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No puedo acceder a ese mensaje`, tweet);
                         logger.endDebug(tweet.id_str, 'postReplyWithMediaNocitado');
                     } catch (error2) {
                         logger.error('[ERROR]', error2);
