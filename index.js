@@ -1,10 +1,7 @@
 const fs = require('fs');
-const log4js = require('log4js');
 const { auth } = require('./config');
 const mimimizeGif = require('./mimimize-gif');
-
-const logger = log4js.getLogger();
-logger.level = 'debug';
+const logger = require('./utils/logger');
 
 const client = auth();
 
@@ -87,53 +84,51 @@ client.stream('statuses/filter', { track: '@mimimiGifBot' }, (stream) => {
     stream.on('data', async (tweet) => {
         logger.debug('Tweet recibido de:', tweet.user.screen_name);
         logger.debug('Tweet:', tweet.text);
-        const startTime = performance.now();
-        logger.debug(`${tweet.id_str}: START General (Procesa tweet)`);
+        logger.startDebug(tweet.id_str, 'General (Procesa tweet)');
 
         if (tweet.user.screen_name === 'mimimiGifBot') {
-            logger.debug('Es una respuesta, no entres en bucle!');
+            logger.debug(`${tweet.id_str}: Es una respuesta, no entres en bucle!`);
         } else if (tweet.retweeted_status) {
-            logger.debug('Es un retweet, no hagas nada!');
+            logger.debug(`${tweet.id_str}: Es un retweet, no hagas nada!`);
         } else {
             try {
                 if (tweet.in_reply_to_status_id_str) {
                     const response = await client.get(`statuses/show/${tweet.in_reply_to_status_id_str}`, {});
 
-                    logger.debug(`${tweet.id_str}: START mimimizeGif`);
+                    logger.startDebug(tweet.id_str, 'mimimizeGif');
                     const gifPath = await mimimizeGif({
                         textMessage: response.text,
                         writeAsFile: true,
                         debugId: tweet.id_str,
                     });
-                    logger.debug(`${tweet.id_str}: END mimimizeGif`);
+                    logger.endDebug(tweet.id_str, 'mimimizeGif');
 
-                    logger.debug(`${tweet.id_str}: START postReplyWithMedia`);
+                    logger.startDebug(tweet.id_str, 'postReplyWithMedia');
                     await postReplyWithMedia(gifPath, `@${tweet.user.screen_name} @${response.user.screen_name}`, response);
-                    logger.debug(`${tweet.id_str}: END postReplyWithMedia`);
+                    logger.endDebug(tweet.id_str, 'postReplyWithMedia');
 
                     fs.unlinkSync(gifPath);
                 } else {
-                    logger.debug(`${tweet.id_str}: START postReplyWithMediaNocitado`);
+                    logger.startDebug(tweet.id_str, 'postReplyWithMediaNocitado');
                     const gifPathNoMessage = `./mimimize-gif/assets/no_texto${Math.ceil(Math.random() * 10)}.gif`;
                     postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No estás citando ningún mensaje`, tweet);
-                    logger.debug(`${tweet.id_str}: END postReplyWithMediaNocitado`);
+                    logger.endDebug(tweet.id_str, 'postReplyWithMediaNocitado');
                 }
             } catch (error) {
                 logger.error('[ERROR]', error);
                 if (Array.isArray(error) && error[0].code === 179) {
                     try {
-                        logger.debug(`${tweet.id_str}: START postReplyWithMediaNocitado`);
+                        logger.startDebug(tweet.id_str, 'postReplyWithMediaNocitado');
                         const gifPathNoMessage = `./mimimize-gif/assets/no_acceso${Math.ceil(Math.random() * 10)}.gif`;
                         postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No puedo acceder a ese mensaje`, tweet);
-                        logger.debug(`${tweet.id_str}: END postReplyWithMediaNocitado`);
+                        logger.endDebug(tweet.id_str, 'postReplyWithMediaNocitado');
                     } catch (error2) {
                         logger.error('[ERROR]', error2);
                     }
                 }
             }
         }
-        const endTime = performance.now();
-        logger.debug(`${tweet.id_str}: END - General (Procesa tweet) - Tiempo total: ${(endTime - startTime).toFixed(2)} ms`);
-        logger.debug('-----------------');
+        logger.endDebug(tweet.id_str, 'General (Procesa tweet)');
+        logger.debug('-----------------------------------------');
     });
 });

@@ -1,10 +1,7 @@
 const Jimp = require('jimp');
 const { GifUtil, GifFrame, GifCodec } = require('gifwrap');
 const gifFrames = require('gif-frames');
-const log4js = require('log4js');
-
-const logger = log4js.getLogger();
-logger.level = 'debug';
+const loadLoger = require('../utils/logger');
 
 const mimimizeText = (text) => {
     let mimimizedText = text || '';
@@ -21,11 +18,11 @@ const loadFont = async () => {
 };
 
 const mimimizeGif = async ({
-    textMessage, writeAsFile, gif, debugId,
+    textMessage, writeAsFile, gif, debugId, logger,
 }) => {
+    const finalLogger = logger || loadLoger;
     const printedDebugId = debugId || 'no-id';
-    const startTime = performance.now();
-    logger.debug(`${printedDebugId}: START - General (mimimizeGif)`);
+    finalLogger.startDebug(printedDebugId, 'General (mimimizeGif)');
 
     let mimimizedMessage = mimimizeText(textMessage);
     const font = await loadFont();
@@ -34,9 +31,9 @@ const mimimizeGif = async ({
     const filePath = `${__dirname}/assets/small_mimimi${gitNumber}.gif`;
 
     // pillo la info de los frames
-    logger.debug(`${printedDebugId}: START - gifFrames`);
+    finalLogger.startDebug(printedDebugId, 'gifFrames');
     const originalFrameData = await gifFrames({ url: filePath, frames: 'all', cumulative: true });
-    logger.debug(`${printedDebugId}: END - gifFrames`);
+    finalLogger.endDebug(printedDebugId, 'gifFrames');
 
     let framesNumber = originalFrameData.length - 1;
     let frameData = originalFrameData;
@@ -49,7 +46,7 @@ const mimimizeGif = async ({
     let NoOflettersWritten = 0;
     const originalMessage = mimimizedMessage;
 
-    logger.debug(`${printedDebugId}: START - generateImages`);
+    finalLogger.startDebug(printedDebugId, 'generateImages');
     const frames = [];
     for (let index = 0; index < frameData.length; index++) {
         const frame = frameData[index];
@@ -83,9 +80,9 @@ const mimimizeGif = async ({
         GifUtil.quantizeSorokin(GifCopied);
         frames.push(GifCopied);
     }
-    logger.debug(`${printedDebugId}: END - generateImages`);
+    finalLogger.endDebug(printedDebugId, 'generateImages');
 
-    logger.debug(`${printedDebugId}: START - generateGif`);
+    finalLogger.startDebug(printedDebugId, 'generateGif');
 
     let result;
     if (writeAsFile) {
@@ -98,9 +95,8 @@ const mimimizeGif = async ({
         const encodedGIF = await codec.encodeGif(frames, { loops: 0 });
         result = encodedGIF.buffer;
     }
-    logger.debug(`${printedDebugId}: END - generateGif`);
-    const endTime = performance.now();
-    logger.debug(`${printedDebugId}: END - General (mimimizeGif) - Tiempo total: ${(endTime - startTime).toFixed(2)} ms`);
+    finalLogger.endDebug(printedDebugId, 'generateGif');
+    finalLogger.endDebug(printedDebugId, 'General (mimimizeGif)');
     return Promise.resolve(result);
 };
 
