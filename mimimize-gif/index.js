@@ -69,8 +69,8 @@ const mimimizeGif = async ({
                 alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
                 alignmentY: Jimp.VERTICAL_ALIGN_BOTTOM,
             },
-            jimpObject.bitmap.width - 5,
-            jimpObject.bitmap.height - 5,
+            jimpObject.bitmap.width - 10,
+            jimpObject.bitmap.height - 10,
         );
         const optionsGifFrame = {
             disposalMethod: frame.disposal,
