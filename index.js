@@ -150,10 +150,29 @@ client.stream('statuses/filter', { track: '@mimimiGifBot' }, (stream) => {
                         }
                     }
                 } else {
-                    logger.startDebug(tweet.id_str, 'postReplyWithMediaNocitado');
-                    const gifPathNoMessage = `./mimimize-gif/assets/no_texto${Math.ceil(Math.random() * 10)}.gif`;
-                    await postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No estás citando ningún mensaje`, tweet);
-                    logger.endDebug(tweet.id_str, 'postReplyWithMediaNocitado');
+                    logger.debug('Tweet:', tweet.text);
+                    const finalText = setFinalText(tweet.text);
+                    if (finalText.length) {
+                        logger.debug('finalText:', finalText);
+                        logger.startDebug(tweet.id_str, 'mimimizeGif');
+                        const gifPath = await mimimizeGif({
+                            textMessage: finalText,
+                            writeAsFile: true,
+                            debugId: tweet.id_str,
+                        });
+                        logger.endDebug(tweet.id_str, 'mimimizeGif');
+
+                        logger.startDebug(tweet.id_str, 'postReplyWithMedia');
+                        await postReplyWithMedia(gifPath, `@${tweet.user.screen_name} @${tweet.user.screen_name}`, tweet);
+                        logger.endDebug(tweet.id_str, 'postReplyWithMedia');
+
+                        fs.unlinkSync(gifPath);
+                    } else {
+                        logger.startDebug(tweet.id_str, 'postReplyWithMediaNocitado');
+                        const gifPathNoMessage = `./mimimize-gif/assets/no_texto${Math.ceil(Math.random() * 10)}.gif`;
+                        await postReplyWithMedia(gifPathNoMessage, `@${tweet.user.screen_name} No estás citando ningún mensaje con texto`, tweet);
+                        logger.endDebug(tweet.id_str, 'postReplyWithMediaNocitado');
+                    }
                 }
             } catch (error) {
                 logger.error('[ERROR]', error);
